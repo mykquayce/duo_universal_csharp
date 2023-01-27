@@ -22,11 +22,11 @@ namespace DuoUniversal.Example.Pages
         internal const string USERNAME_SESSION_KEY = "_Username";
 
 
-        private readonly IDuoClientProvider _duoClientProvider;
+        private readonly Client _duoClient;
 
-        public IndexModel(IDuoClientProvider duoClientProvider)
+        public IndexModel(Client duoClient)
         {
-            _duoClientProvider = duoClientProvider;
+            _duoClient = duoClient;
         }
 
         public void OnGet()
@@ -38,12 +38,9 @@ namespace DuoUniversal.Example.Pages
         {
             // Initiate the Duo authentication for a specific username
 
-            // Get a Duo client
-            Client duoClient = _duoClientProvider.GetDuoClient();
-
             // Check if Duo seems to be healthy and able to service authentications.
             // If Duo were unhealthy, you could possibly send user to an error page, or implement a fail mode
-            var isDuoHealthy = await duoClient.DoHealthCheck();
+            var isDuoHealthy = await _duoClient.DoHealthCheck();
 
             // Generate a random state value to tie the authentication steps together
             string state = Client.GenerateState();
@@ -52,7 +49,7 @@ namespace DuoUniversal.Example.Pages
             HttpContext.Session.SetString(USERNAME_SESSION_KEY, username);
 
             // Get the URI of the Duo prompt from the client.  This includes an embedded authentication request.
-            string promptUri = duoClient.GenerateAuthUri(username, state);
+            string promptUri = _duoClient.GenerateAuthUri(username, state);
 
             // Redirect the user's browser to the Duo prompt.
             // The Duo prompt, after authentication, will redirect back to the configured Redirect URI to complete the authentication flow.

@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
 namespace DuoUniversal.Example
 {
@@ -22,9 +23,29 @@ namespace DuoUniversal.Example
 
         public void ConfigureServices(IServiceCollection services)
         {
+            services
+                .AddOptions<Config>()
+                .Configure((Config config) =>
+                {
+                    config.ClientId = Configuration["Client ID"];
+                    config.ClientSecret = Configuration["Client Secret"];
+                    config.ApiHost = Configuration["Api Host"];
+                    config.RedirectUri = Configuration["Redirect Uri"];
+                })
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
+
             // This is one possible way to make a Duo client factory available, there are many other options.
-            var duoClientProvider = new DuoClientProvider(Configuration);
-            services.AddSingleton<IDuoClientProvider>(duoClientProvider);
+            services.AddSingleton<ClientBuilder>(provider =>
+            {
+                var (clientId, clientSecret, apiHost, redirectUri) = provider.GetRequiredService<IOptions<Config>>().Value;
+                return new(clientId, clientSecret, apiHost, redirectUri);
+            });
+            services.AddTransient<Client>(provider=>
+            {
+                var builder = provider.GetRequiredService<ClientBuilder>();
+                return builder.Build();
+            });
 
             services.AddDistributedMemoryCache();
             services.AddSession(options =>
@@ -56,49 +77,6 @@ namespace DuoUniversal.Example
             {
                 endpoints.MapRazorPages();
             });
-        }
-    }
-
-    public interface IDuoClientProvider
-    {
-        public Client GetDuoClient();
-    }
-
-    internal class DuoClientProvider : IDuoClientProvider
-    {
-        private string ClientId { get; }
-        private string ClientSecret { get; }
-        private string ApiHost { get; }
-        private string RedirectUri { get; }
-
-        public DuoClientProvider(IConfiguration config)
-        {
-            ClientId = config.GetValue<string>("Client ID");
-            ClientSecret = config.GetValue<string>("Client Secret");
-            ApiHost = config.GetValue<string>("API Host");
-            RedirectUri = config.GetValue<string>("Redirect URI");
-        }
-
-        public Client GetDuoClient()
-        {
-            if (string.IsNullOrWhiteSpace(ClientId))
-            {
-                throw new DuoException("A 'Client ID' configuration value is required in the appsettings file.");
-            }
-            if (string.IsNullOrWhiteSpace(ClientSecret))
-            {
-                throw new DuoException("A 'Client Secret' configuration value is required in the appsettings file.");
-            }
-            if (string.IsNullOrWhiteSpace(ApiHost))
-            {
-                throw new DuoException("An 'Api Host' configuration value is required in the appsettings file.");
-            }
-            if (string.IsNullOrWhiteSpace(RedirectUri))
-            {
-                throw new DuoException("A 'Redirect URI' configuration value is required in the appsettings file.");
-            }
-
-            return new ClientBuilder(ClientId, ClientSecret, ApiHost, RedirectUri).Build();
         }
     }
 }

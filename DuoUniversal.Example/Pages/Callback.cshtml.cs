@@ -18,13 +18,13 @@ namespace DuoUniversal.Example.Pages
     /// </summary>
     public class CallbackModel : PageModel
     {
-        private readonly IDuoClientProvider _duoClientProvider;
+        private readonly Client _duoClient;
 
         public string AuthResponse { get; set; }
 
-        public CallbackModel(IDuoClientProvider duoClientProvider)
+        public CallbackModel(Client duoClient)
         {
-            _duoClientProvider = duoClientProvider;
+            _duoClient = duoClient;
         }
 
         public async Task<IActionResult> OnGet(string state, string code)
@@ -38,11 +38,6 @@ namespace DuoUniversal.Example.Pages
             {
                 throw new DuoException("Required code value was empty");
             }
-
-            // Get the Duo client again.  This can be either be cached in the session or newly built.
-            // The only stateful information in the Client is your configuration, so you could even use the same client for multiple
-            // user authentications if desired.
-            Client duoClient = _duoClientProvider.GetDuoClient();
 
             // The original state value sent to Duo, as well as the username that started the auth, should be stored in the session.
             var sessionState = HttpContext.Session.GetString(IndexModel.STATE_SESSION_KEY);
@@ -62,7 +57,7 @@ namespace DuoUniversal.Example.Pages
             HttpContext.Session.Clear();
 
             // Get a summary of the authentication from Duo.  This will trigger an exception if the username does not match.
-            IdToken token = await duoClient.ExchangeAuthorizationCodeFor2faResult(code, sessionUsername);
+            IdToken token = await _duoClient.ExchangeAuthorizationCodeFor2faResult(code, sessionUsername);
 
             // Do whatever checks you want on the returned information.  For this example, we'll simply print it to an HTML page.
             var options = new JsonSerializerOptions
