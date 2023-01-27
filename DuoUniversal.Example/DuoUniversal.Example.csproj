@@ -9,6 +9,7 @@
 
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
+    <UserSecretsId>35423111-17e9-4e11-804b-1a0a6f3720af</UserSecretsId>
   </PropertyGroup>
 
 </Project>
